@@ -23,23 +23,12 @@ numLeftImages = 0
 numRightImages = 0
 
 def main():
-   
-    # env.forward(45)
-    # sleep(2)
-    # env.forward(45)
-    # sleep(2)
-    # env.right(45)
-    # sleep(2)
-    # env.forward(45)
-    # ------------------------------------------
+
     fig.canvas.mpl_connect("key_press_event", onpress)
     plt.title("Unreal Engine View")
     plt.axis("off")
     ax.imshow(env.request_image(cameraNum=0))
-    # while(env.isconnected()):
-    #     ax.imshow(env.request_image(cameraNum=0))
     plt.show()
-        # sleep(1)
         
 def onpress(event):
     path = "none"
@@ -68,7 +57,7 @@ def onpress(event):
         env.back(45)
     else:
         return
-    shutil.move(path, "C:\\Users\\simon\\OneDrive\\Documents\\ArcsLab\\ArcLabPrograms\\TestData")
+    shutil.move(path, ".\TestData")
     ax.imshow(env.request_image(cameraNum=0))
     fig.canvas.draw()
 

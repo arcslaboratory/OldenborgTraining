@@ -29,14 +29,6 @@ class UE5EnvWrapper:
         self.initial_x,self.initial_y,self.initial_z = loc.split()
         self.initial_pitch,self.initial_yaw,self.initial_roll = rot.split()
 
-        # self.x = self.initial_x
-        # self.y = self.initial_y
-        # self.z = self.initial_z
-
-        # self.pitch = self.initial_pitch
-        # self.yaw = self.initial_yaw
-        # self.roll = self.initial_roll
-        
         self.cameraIDs = ["0", "1", "2"]
 
     def isconnected(self):
