@@ -1,24 +1,9 @@
 # !/usr/bin/env python
-
-from concurrent.futures import thread
-from multiprocessing.connection import wait
-from random import Random
-from time import sleep
 import matplotlib.pyplot as plt
-
-import sys
-
-from sklearn import datasets
-
 from UnrealUtilities import UE5EnvWrapper
-import fastai
-import numpy
-import pandas
-import os
 import shutil
 import random
 
-# print(type(imageName))
 env = UE5EnvWrapper()
 fig, ax = plt.subplots()
 
