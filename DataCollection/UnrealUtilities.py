@@ -84,11 +84,11 @@ class UE5EnvWrapper:
         ue5.request(f"open {levelName}")
 
     def request_image(self, cameraNum:Int):
-        image_data = ue5.request(f"vget /camera/{cameraNum}/lit jpg")
+        image_data = ue5.request(f"vget /camera/{cameraNum}/lit png")
         return read_png(image_data)
         
     def save_image(self, cameraNum:Int, annotation:Str):
-        path = ue5.request(f'vget /camera/{cameraNum}/lit {annotation}.jpg')
+        path = ue5.request(f'vget /camera/{cameraNum}/lit {annotation}.png')
         return path
 
     def show(self):
