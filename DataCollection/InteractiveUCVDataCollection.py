@@ -7,11 +7,6 @@ import random
 env = UE5EnvWrapper()
 fig, ax = plt.subplots()
 
-numForwardImages = 0
-numBackImages = 0
-numLeftImages = 0
-numRightImages = 0
-
 def main():
 
     fig.canvas.mpl_connect("key_press_event", onpress)
@@ -19,20 +14,17 @@ def main():
     plt.axis("off")
     ax.imshow(env.request_image(cameraNum=0))
     plt.show()
-    
-        
+"""
+Called when user presses a key when plot window is focused
+""" 
 def onpress(event):
     path = "none"
-    global numForwardImages
-    global numBackImages
-    global numLeftImages
-    global numRightImages
-
+    # Generate unique file name, for now simply a float between 0 and 1 with the '0.' removed
     num = str(random.random())
     num = num.split('.')
     imageName = num[1]
-
-    datasetPath = "C:/Users/simon/OneDrive/Documents/ArcsLab/ArcLabPrograms/OldenborgTraining/Nueral_Network_Scripts/DataSets/UE5Images"
+    
+    datasetPath = "./Data/UE5Images"
 
     if event.key == "w" or event.key == "up":
         numForwardImages += 1
