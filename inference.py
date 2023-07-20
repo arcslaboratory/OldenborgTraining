@@ -2,6 +2,11 @@
 This script will run on the desktop. 
 
 This can use packaged game or editor.
+
+Robot can run into the wall.
+
+Note for boxnav: verify forward movement with raycast before move action.
+
 """
 from time import sleep
 from fastai.vision.all import *
@@ -58,11 +63,11 @@ def main():
     rotation_increment = radians(10)
 
     image_num = 0
-    #use context manager with communicator here; see UE5OSC demo for example
+    # use context manager with communicator here; see UE5OSC demo for example
     """
     With Communicator 
         save an image (saves a file)
-        sleep
+        sleep(add arg for sleep amount -> how long does UE take to take ss)
         read in image file
         pass to the NN
         act on NN decision 
