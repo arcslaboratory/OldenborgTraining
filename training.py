@@ -1,3 +1,8 @@
+"""
+This script will run on the server. 
+
+Need to use wandb artifact.
+"""
 from fastai.vision.all import *
 from pathlib import Path
 from argparse import ArgumentParser
@@ -16,6 +21,7 @@ def get_action_from_filename(filename):
 
 
 def main():
+    #TODO fix help strings
     arg_parser = ArgumentParser("Train a model")
     arg_parser.add_argument("--dataset", type=str, help="dataset location")
     arg_parser.add_argument("--model", type=str, help="pre-trained model")
