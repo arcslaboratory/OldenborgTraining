@@ -1,3 +1,8 @@
+"""
+This script will run on the desktop. 
+
+This can use packaged game or editor.
+"""
 from time import sleep
 from fastai.vision.all import *
 from ue5osc import Communicator
