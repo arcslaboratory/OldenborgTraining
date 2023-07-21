@@ -15,20 +15,39 @@ compared_models = {
     # "alexnet": alexnet,
     # "densenet121": densenet121,
 }
-#TODO fix
+
+
+# TODO fix
 def get_action_from_filename(filename):
     return filename.split("_")[0]
 
 
 def main():
-    #TODO fix help strings
     arg_parser = ArgumentParser("Train a model")
-    arg_parser.add_argument("--dataset", type=str, help="dataset location")
-    arg_parser.add_argument("--model", type=str, help="pre-trained model")
-    arg_parser.add_argument("--valid_pct", type=float, default=0.2, help="percentage of images used for validation")
-    arg_parser.add_argument("--image_resize", type=int, default=224, help="Image transform.")
-    arg_parser.add_argument("--batch_size", type=int, default=32, help="Change batch size.")
-    arg_parser.add_argument("--num_epochs", type=int, default=5, help="Change number of epochs.")
+    arg_parser.add_argument(
+        "--dataset", type=str, help="Input path to dataset to feed into model."
+    )
+    arg_parser.add_argument(
+        "--model", type=str, help="Choose which model framework to use."
+    )
+    arg_parser.add_argument(
+        "--valid_pct",
+        type=float,
+        default=0.2,
+        help="Choose the percentage of images to be used for validation.",
+    )
+    arg_parser.add_argument(
+        "--image_resize",
+        type=int,
+        default=224,
+        help="Transform the images to a specific size.",
+    )
+    arg_parser.add_argument(
+        "--batch_size", type=int, default=32, help="Change the batch size."
+    )
+    arg_parser.add_argument(
+        "--num_epochs", type=int, default=5, help="Change the number of epochs."
+    )
     args = arg_parser.parse_args()
 
     dataset_path = Path(args.dataset)
