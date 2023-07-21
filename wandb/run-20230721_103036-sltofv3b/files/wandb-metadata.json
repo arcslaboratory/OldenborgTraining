@@ -1,0 +1,52 @@
+{
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.11.3",
+    "heartbeatAt": "2023-07-21T17:30:37.189237",
+    "startedAt": "2023-07-21T17:30:36.041371",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "UE_Screenshots"
+    ],
+    "state": "running",
+    "program": "C:\\Users\\alnj2022\\Documents\\VisualStudioCode\\OldenborgTraining\\create_artifact.py",
+    "codePath": "create_artifact.py",
+    "git": {
+        "remote": "https://github.com/anjalinugg4/OldenborgTraining.git",
+        "commit": "0300e343346e4ba9b105d0f8bfec942b439e170a"
+    },
+    "email": null,
+    "root": "C:/Users/alnj2022/Documents/VisualStudioCode/OldenborgTraining",
+    "host": "AJCD2020-PC63",
+    "username": "alnj2022",
+    "executable": "c:\\Users\\alnj2022\\.conda\\envs\\unreal\\python.exe",
+    "cpu_count": 8,
+    "cpu_count_logical": 16,
+    "cpu_freq": {
+        "current": 2904.0,
+        "min": 0.0,
+        "max": 2904.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2904.0,
+            "min": 0.0,
+            "max": 2904.0
+        }
+    ],
+    "disk": {
+        "total": 238.45800399780273,
+        "used": 123.74121475219727
+    },
+    "gpu": "Quadro RTX 4000",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "Quadro RTX 4000",
+            "memory_total": 8589934592
+        }
+    ],
+    "memory": {
+        "total": 31.71906280517578
+    }
+}

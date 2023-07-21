@@ -7,7 +7,7 @@ import wandb
 
 run = wandb.init()
 artifact = run.use_artifact(
-    "arcslaboratory/Multirun-testing-4K/perfect-dataset-no-texture:v0", type="dataset"
+    "arcslaboratory/project_name/artifact_name:v0", type="dataset"
 )
 artifact_dir = artifact.download()
 
@@ -16,9 +16,6 @@ image_dir = os.path.join(artifact_dir, "data")
 
 # Use the `get_image_files` function to get image files from the `image_dir`
 files = get_image_files(image_dir)
-
-num_files = len(files)
-print("Number of images:", num_files)
 
 
 def label_func(f):
@@ -30,9 +27,6 @@ def label_func(f):
         return "forward"
     else:
         return "right"
-
-
-print(label_func(str(files[10])))
 
 
 dls = ImageDataLoaders.from_name_func(
