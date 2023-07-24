@@ -17,9 +17,15 @@ compared_models = {
 }
 
 
-# TODO fix
 def get_action_from_filename(filename):
-    return filename.split("_")[0]
+    direction = f.split("/")[-1].split(".")[0].split("_")[-1]
+
+    if direction[0] == "+":
+        return "left"
+    elif direction[0] == "-":
+        return "right"
+    else:
+        return "forward"
 
 
 def main():

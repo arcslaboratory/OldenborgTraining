@@ -21,12 +21,12 @@ files = get_image_files(image_dir)
 def label_func(f):
     direction = f.split("/")[-1].split(".")[0].split("_")[-1]
 
-    if direction[0:2] == "0p":
+    if direction[0] == "+":
         return "left"
-    elif direction[0] == "0":
-        return "forward"
-    else:
+    elif direction[0] == "-":
         return "right"
+    else:
+        return "forward"
 
 
 dls = ImageDataLoaders.from_name_func(

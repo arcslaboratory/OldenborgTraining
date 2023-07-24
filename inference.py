@@ -5,14 +5,13 @@ This can use packaged game or editor.
 
 Robot can run into the wall.
 
-Note for boxnav: verify forward movement with raycast before move action.
-
 """
 from time import sleep
 from fastai.vision.all import *
 from ue5osc import Communicator
 
 import os
+
 # import pathlib
 # temp = pathlib.PosixPath
 # pathlib.PosixPath = pathlib.WindowsPath
@@ -24,23 +23,46 @@ from argparse import ArgumentParser
 
 import time
 
-#TODO fix (use diff naming)
+
+# # TODO fix (use diff naming)
+# def get_action_from_filename(filename):
+#     return filename.split("_")[0]
+
+
 def get_action_from_filename(filename):
-    return filename.split("_")[0]
+    direction = f.split("/")[-1].split(".")[0].split("_")[-1]
+
+    if direction[0] == "+":
+        return "left"
+    elif direction[0] == "-":
+        return "right"
+    else:
+        return "forward"
 
 
 def main():
-    #fix help
-    argparser = ArgumentParser("Run inference on model")
-    argparser.add_argument("model", type=str, help="name of model to load")
-    argparser.add_argument("port", type=int, help="port for Unreal Engine 5 connection")
+    argparser = ArgumentParser("Run inference on model.")
+    argparser.add_argument("model", type=str, help="Choose which model to load in.")
+    argparser.add_argument("--ip", type=str, default="127.0.0.1", help="IP Address")
+    argparser.add_argument(
+        "--ue_port", type=int, default=7447, help="Unreal Engine OSC server port."
+    )
+    argparser.add_argument(
+        "--py_port", type=int, default=7001, help="Python OSC server port."
+    )
     # argparser.add_argument(
     #     "path_to_projects", type=str, help="path to where Unreal Engine 5 projects are stored"
-    #)
+    # )
     args = argparser.parse_args()
 
     # TODO change to Communicator
-    env = UE5EnvWrapper(port=args.port)
+    with ue5osc.Communicator(
+        args.ip,
+        args.ue_port,
+        args.py_port,
+    ) as osc_communicator:
+        sleep(0.5)
+
     learn = load_learner(f"./models/{args.model}")
 
     # path to where UE5 saves projects
@@ -58,8 +80,8 @@ def main():
     # if (os.path.isdir(image_folder)):
     #     sys.exit("ERROR: The \"Screenshots\" folder exists in the Saved directory of UE5 connected project file, please delete this folder and run again.")
 
-    #TODO thoughtfully think about what these values should be
-    movement_increment = 50   
+    # TODO thoughtfully think about what these values should be
+    movement_increment = 50
     rotation_increment = radians(10)
 
     image_num = 0
@@ -95,7 +117,7 @@ def main():
     # new_folder_name = screenshot_folder + time.strftime("-%Y-%m-%d-%H%M", current_time)
     # os.rename(screenshot_folder, pathlib.Path(new_folder_name))
     # print(f"Inference images saved to: {project_saved_path}\\{new_folder_name}")
-        
+
 
 if __name__ == "__main__":
-    main()
+    label_func("artifacts/perfect-dataset-no-texture:v0/data/001_000117_+0p21.png")
