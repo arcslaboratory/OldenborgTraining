@@ -7,6 +7,7 @@ from math import radians
 from argparse import ArgumentParser, Namespace
 import time
 
+# Need it otherwise we get an Error PoxisPath
 temp = pathlib.PosixPath
 pathlib.PosixPath = pathlib.WindowsPath
 
