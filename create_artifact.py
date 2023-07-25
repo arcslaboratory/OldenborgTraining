@@ -15,7 +15,7 @@ def zip_file():
 
 def artifact_setup(args: Namespace):
     run = wandb.init(
-        # Change project and notes to be specific to the artifact you're creating; follow project name format
+        # Change project and notes to be specific to the artifact you're creating; follow project name format.
         # Example: "randomized_hidden_perfect"
         project="env_visibility_path",
         entity="arcslaboratory",

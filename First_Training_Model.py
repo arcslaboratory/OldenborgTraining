@@ -14,7 +14,7 @@ artifact_dir = artifact.download()
 
 image_dir = os.path.join(artifact_dir, "data")
 
-# Use the `get_image_files` function to get image files from the `image_dir`
+# Use the `get_image_files` function to get image files from the image_dir
 files = get_image_files(image_dir)
 
 
