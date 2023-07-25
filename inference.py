@@ -1,36 +1,18 @@
-"""
-This script will run on the desktop. 
-
-This can use packaged game or editor.
-
-Robot can run into the wall.
-
-"""
 from time import sleep
 from fastai.vision.all import *
 from ue5osc import Communicator
-
 import os
-
-# import pathlib
-# temp = pathlib.PosixPath
-# pathlib.PosixPath = pathlib.WindowsPath
-
-import sys
-
+import pathlib
 from math import radians
-from argparse import ArgumentParser
-
+from argparse import ArgumentParser, Namespace
 import time
 
-
-# # TODO fix (use diff naming)
-# def get_action_from_filename(filename):
-#     return filename.split("_")[0]
+temp = pathlib.PosixPath
+pathlib.PosixPath = pathlib.WindowsPath
 
 
-def get_action_from_filename(filename):
-    direction = f.split("/")[-1].split(".")[0].split("_")[-1]
+def label_func(filename):
+    direction = filename.split("/")[-1].split(".")[0].split("_")[-1]
 
     if direction[0] == "+":
         return "left"
@@ -40,9 +22,21 @@ def get_action_from_filename(filename):
         return "forward"
 
 
+def get_image(filename: str) -> bytes:
+    """Requests the image we saved."""
+    from PIL import Image
+
+    image = Image.open(filename)
+    display_image = image.show()
+    return image
+
+
 def main():
     argparser = ArgumentParser("Run inference on model.")
-    argparser.add_argument("model", type=str, help="Choose which model to load in.")
+    argparser.add_argument("--model", type=str, help="Choose which model to load in.")
+    argparser.add_argument(
+        "file_path", type=str, help="Choose where to save your image to."
+    )
     argparser.add_argument("--ip", type=str, default="127.0.0.1", help="IP Address")
     argparser.add_argument(
         "--ue_port", type=int, default=7447, help="Unreal Engine OSC server port."
@@ -50,74 +44,37 @@ def main():
     argparser.add_argument(
         "--py_port", type=int, default=7001, help="Python OSC server port."
     )
-    # argparser.add_argument(
-    #     "path_to_projects", type=str, help="path to where Unreal Engine 5 projects are stored"
-    # )
     args = argparser.parse_args()
 
-    # TODO change to Communicator
-    with ue5osc.Communicator(
-        args.ip,
-        args.ue_port,
-        args.py_port,
-    ) as osc_communicator:
-        sleep(0.5)
+    learn = load_learner("c:\\Users\\alnj2022\\Downloads\\model.pkl")
 
-    learn = load_learner(f"./models/{args.model}")
-
-    # path to where UE5 saves projects
-    # project_path = args.path_to_projects
-    # get the connected project's name
-    # project_name = env.get_project_name()
-    # path in project folder to saved folder
-    # project_saved_path = project_name + "\\Saved"
-    # path in project folder to screenshots according to default configurations
-    # screenshot_folder = "Screenshots"
-    # project_screenshot_path = project_saved_path + "\\" + screenshot_folder
-
-    # check existence of screenshots folder and error out if folder exists
-    # image_folder = os.path.join(project_path, project_screenshot_path)
-    # if (os.path.isdir(image_folder)):
-    #     sys.exit("ERROR: The \"Screenshots\" folder exists in the Saved directory of UE5 connected project file, please delete this folder and run again.")
-
-    # TODO thoughtfully think about what these values should be
     movement_increment = 50
     rotation_increment = radians(10)
 
-    image_num = 0
-    # use context manager with communicator here; see UE5OSC demo for example
-    """
-    With Communicator 
-        save an image (saves a file)
-        sleep(add arg for sleep amount -> how long does UE take to take ss)
-        read in image file
-        pass to the NN
-        act on NN decision 
-    """
-    # while env.is_connected():
-    #     env.save_image(0)
-    #     image_path = os.path.join(image_folder, 'WindowsEditor\HighresScreenshot{num:0{width}}.png'.format(num=image_num, width=5))
-    #     clss, clss_idx, probs = learn.predict(image_path)
-    #     print(clss)
-    #     if clss == "right":
-    #         env.right(rotation_increment)
-    #     elif clss == "left":
-    #         env.left(rotation_increment)
-    #     elif clss == "forward":
-    #         env.forward(movement_increment)
-    #     elif clss == "back":
-    #         env.back(movement_increment)
-    #     image_num += 1
-    #     sleep(1)
-    # env.reset()
+    file_path = Path(args.file_path).resolve() if args.file_path else None
 
-    # create new folder for screenshots based on time of inference completion and move images there
-    # os.chdir(os.path.join(project_path, project_saved_path))
-    # current_time = time.localtime()
-    # new_folder_name = screenshot_folder + time.strftime("-%Y-%m-%d-%H%M", current_time)
-    # os.rename(screenshot_folder, pathlib.Path(new_folder_name))
-    # print(f"Inference images saved to: {project_saved_path}\\{new_folder_name}")
+    if file_path:
+        file_path.mkdir(parents=True, exist_ok=True)
+
+    image_number = 0
+
+    with Communicator(ip="127.0.0.1", ue_port=7447, py_port=7001) as osc_communicator:
+        image_number += 1
+        image_filepath = f"{file_path}/" f"{image_number:06}.jpg"
+
+        osc_communicator.save_image(image_filepath)
+        sleep(2.0)
+        get_image(image_filepath)
+
+        im = PILImage.create(image_filepath)
+
+        # Remove the following line; no need to resize the image here
+        # im = im.thumbnail((256, 256))
+
+        predicted_direction, _, probs = learn.predict(im)
+        print(f"We should go: {predicted_direction}")
+        print(f"Probability we need to go {predicted_direction}: {probs[0]:.4f}")
 
 
 if __name__ == "__main__":
-    label_func("artifacts/perfect-dataset-no-texture:v0/data/001_000117_+0p21.png")
+    main()
