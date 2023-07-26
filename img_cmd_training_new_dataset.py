@@ -264,6 +264,16 @@ def main():
             rep,
         )
 
+        # Create the artifact to save the models
+        artifact = wandb.Artifact(
+        name="07-26-img-cmd-1k+",
+        type="model"
+        )
+
+    # Log the artifact to wandb
+       artifact.add_dir(f"{model_dir}", name="data")
+        run.log_artifact(artifact)
+
 
 
 if __name__ == "__main__":
