@@ -7,7 +7,8 @@ import wandb
 
 run = wandb.init()
 artifact = run.use_artifact(
-    "arcslaboratory/project_name/artifact_name:v0", type="dataset"
+    "arcslaboratory/wandering-random-2K+/07-26_wandering_10Trials_randomized:v0",
+    type="dataset",
 )
 artifact_dir = artifact.download()
 

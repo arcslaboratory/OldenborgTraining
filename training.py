@@ -3,79 +3,294 @@ This script will run on the server.
 
 Need to use wandb artifact.
 """
-from fastai.vision.all import *
-from pathlib import Path
 from argparse import ArgumentParser
-import os
 
-compared_models = {
-    "resnet18": resnet18,
-    # "xresnext50": xresnext50,
-    # "xresnext18": xresnext18,
-    # "alexnet": alexnet,
-    # "densenet121": densenet121,
-}
+import matplotlib.pyplot as plt
+import os.path
+from os import path
+
+from fastai.vision.all import *
+from fastai.callback.progress import CSVLogger
+
+import wandb
+
+# Initialize W&B run (if not already initialized)
+run = wandb.init(
+    project="third-testing",
+    entity="anjali-nugg",
+    notes="A set of small/useless datasets for testing.",
+    job_type="dataset-upload",
+)
+# Load the dataset artifact
+artifact = run.use_artifact(
+    "arcslaboratory/Multirun-testing-1K+/larger-perfect-dataset:v0"
+)
+artifact_dir = artifact.download()
 
 
-def get_action_from_filename(filename):
-    direction = f.split("/")[-1].split(".")[0].split("_")[-1]
+dataset_path = artifact_dir + "/"  # Path to the extracted images from the artifact
 
-    if direction[0] == "+":
+from torch.utils.data import Dataset
+
+# Constants
+# Load the dataset artifact
+
+VALID_PCT = 0.05
+NUM_REPLICATES = 2
+NUM_EPOCHS = 1
+# DATASET_DIR = Path("/data/clark/summer2021/datasets")
+DATASET_DIR = Path(dataset_path)
+MODEL_PATH_REL_TO_DATASET = Path("cmd_models_fixed")
+DATA_PATH_REL_TO_DATASET = Path("cmd_data_fixed")
+# VALID_MAZE_DIR = Path("../Mazes/validation_mazes8x8/")
+
+compared_models = {"resnet18": resnet18, "resnet34": resnet34}
+
+DATASET_DIR.ls()
+
+
+def filename_to_class(filename: str) -> str:
+    angle = float(filename.split("_")[1].split(".")[0].replace("p", "."))
+    if angle > 0:
         return "left"
-    elif direction[0] == "-":
+    elif angle < 0:
         return "right"
     else:
         return "forward"
 
 
+class ImageWithCmdDataset(Dataset):
+    def __init__(self, filenames):
+        """
+        Creates objects for class labels, class indices, and filenames.
+
+        :param filenames: (list) a list of filenames that make up the dataset
+        """
+        self.class_labels = ["left", "forward", "right"]
+        self.class_indices = {
+            lbl: i for i, lbl in enumerate(self.class_labels)
+        }  # {'left': 0, 'forward': 1, 'right': 2}
+        self.all_filenames = filenames
+
+    def __len__(self):
+        """
+        Gives length of dataset.
+
+        :return: (int) the number of filenames in the dataset
+        """
+        return len(self.all_filenames)
+
+    def __getitem__(self, index):
+        """
+        Gets the filename associated with the given index, opens the image at
+        that index, then uses the image's filename to get information associated
+        with the image such as its label and the label of the previous image.
+
+        :param index: (int) number that represents the location of the desired data
+        :return: (tuple) tuple of all the information associated with the desired data
+        """
+        # The filename of the image given a specific index
+        img_filename = self.all_filenames[index]
+
+        # Opens image file and ensures dimension of channels included
+        img = Image.open(img_filename).convert("RGB")
+        # Resizes the image
+        img = img.resize((224, 224))
+        # Converts the image to tensor and
+        img = torch.Tensor(np.array(img) / 255)
+        # changes the order of the dimensions
+        img = img.permute(2, 0, 1)
+
+        # Getting the current image's label
+        label_name = filename_to_class(str(img_filename))
+        label = self.class_indices[label_name]
+
+        # Getting the previous image's label
+        # The default is 'forward'
+        cmd_name = "forward"
+
+        # If the index is not 0, the cmd is determined by the previous img_filename
+        if index != 0:
+            prev_img_filename = self.all_filenames[index - 1]
+            cmd_name = filename_to_class(str(prev_img_filename))
+        cmd = self.class_indices[cmd_name]
+
+        # Data and the label associated with that data
+        return (img, cmd), label
+
+
+class cmd_model(nn.Module):
+    def __init__(self, arch: str, pretrained: bool):
+        super(cmd_model, self).__init__()
+        self.cnn = arch(pretrained=pretrained)
+
+        self.fc1 = nn.Linear(self.cnn.fc.out_features + 1, 512)
+        self.r1 = nn.ReLU(inplace=True)
+        self.fc2 = nn.Linear(512, 3)
+
+    def forward(self, data):
+        #         print(data)
+        img, cmd = data
+        x1 = self.cnn(img)
+        x2 = cmd.unsqueeze(1)
+
+        x = torch.cat((x1, x2), dim=1)
+        x = self.r1(self.fc1(x))
+        x = self.fc2(x)
+        return x
+
+
+def get_fig_filename(prefix: str, label: str, ext: str, rep: int) -> str:
+    fig_filename = f"{prefix}-{label}-{rep}.{ext}"
+    print(label, "filename :", fig_filename)
+    return fig_filename
+
+
+def prepare_dataloaders(dataset_name: str, prefix: str) -> DataLoaders:
+    path = DATASET_DIR / dataset_name
+    files = get_image_files(path)
+    #     print(files)
+
+    # Get size of dataset and corresponding list of indices
+    dataset_size = len(files)
+    dataset_indices = list(range(dataset_size))
+
+    # Shuffle the indices
+    np.random.shuffle(dataset_indices)
+
+    # Get the index for where we want to split the data
+    val_split_index = int(np.floor(VALID_PCT * dataset_size))
+
+    # Split the list of indices into training and validation indices
+    train_idx, val_idx = (
+        dataset_indices[val_split_index:],
+        dataset_indices[:val_split_index],
+    )
+
+    # Get the list of filenames for the training and validation sets
+    train_filenames = [files[i] for i in train_idx]
+    val_filenames = [files[i] for i in val_idx]
+
+    # Create training and validation datasets
+    train_data = ImageWithCmdDataset(train_filenames)
+    #     train_data.__get_item__(10)
+    val_data = ImageWithCmdDataset(val_filenames)
+
+    # Get DataLoader
+    dls = DataLoaders.from_dsets(train_data, val_data)
+    dls = dls.cuda()
+
+    # dls.show_batch()  # type: ignore
+    plt.savefig(get_fig_filename(prefix, "batch", "pdf", 0))
+
+    return dls  # type: ignore
+
+
+def train_model(
+    dls: DataLoaders,
+    model_arch: str,
+    pretrained: bool,
+    logname: Path,
+    modelname: Path,
+    prefix: str,
+    rep: int,
+):
+    arch = compared_models[model_arch]
+    net = cmd_model(arch, pretrained=pretrained)
+
+    learn = Learner(
+        dls,
+        net,
+        loss_func=CrossEntropyLossFlat(),
+        metrics=accuracy,
+        cbs=CSVLogger(fname=logname),
+    )
+
+    if pretrained:
+        learn.fine_tune(NUM_EPOCHS)
+    else:
+        learn.fit_one_cycle(NUM_EPOCHS)
+
+    # Save trained model
+    torch.save(net.state_dict(), modelname)
+
+
 def main():
-    arg_parser = ArgumentParser("Train a model")
+    arg_parser = ArgumentParser("Train cmd classification networks.")
     arg_parser.add_argument(
-        "--dataset", type=str, help="Input path to dataset to feed into model."
+        "model_arch", help="Model architecture (see code for options)"
     )
     arg_parser.add_argument(
-        "--model", type=str, help="Choose which model framework to use."
+        "dataset_name", help="Name of dataset to use (corrected-wander-full)"
     )
     arg_parser.add_argument(
-        "--valid_pct",
-        type=float,
-        default=0.2,
-        help="Choose the percentage of images to be used for validation.",
+        "--pretrained", action="store_true", help="Use pretrained model"
     )
-    arg_parser.add_argument(
-        "--image_resize",
-        type=int,
-        default=224,
-        help="Transform the images to a specific size.",
-    )
-    arg_parser.add_argument(
-        "--batch_size", type=int, default=32, help="Change the batch size."
-    )
-    arg_parser.add_argument(
-        "--num_epochs", type=int, default=5, help="Change the number of epochs."
-    )
+    arg_parser.add_argument("gpu", help="Assign GPU")
+
     args = arg_parser.parse_args()
 
-    dataset_path = Path(args.dataset)
-    path = Path(os.getcwd())
-    filenames = get_image_files(dataset_path)
-    dls = ImageDataLoaders.from_name_func(
-        path,
-        valid_pct=args.valid_pct,
-        item_tfms=Resize(args.image_resize),
-        bs=args.batch_size,
-        label_func=get_action_from_filename,
-        fnames=filenames,
-    )
+    # TODO: not using this (would require replacing first layer)
+    # rgb_instead_of_gray = True
 
-    print("Validation dataset size:", len(dls.valid_ds))
-    print("Training dataset size:", len(dls.train_ds))
+    # Assign GPU:
+    torch.cuda.set_device(int(args.gpu))
+    print("Running on GPU: " + str(torch.cuda.current_device()))
 
-    learn = vision_learner(dls, compared_models[args.model], metrics=accuracy)
+    # Make dirs as needed
+    model_dir = DATASET_DIR / args.dataset_name / MODEL_PATH_REL_TO_DATASET
+    model_dir.mkdir(exist_ok=True)
+    print(f"Created model dir (or it already exists) : '{model_dir}'")
 
-    learn.fine_tune(args.num_epochs)
+    data_dir = DATASET_DIR / args.dataset_name / DATA_PATH_REL_TO_DATASET
+    data_dir.mkdir(exist_ok=True)
+    print(f"Created data dir (or it already exists)  : '{data_dir}'")
 
-    learn.export("./models/" + args.model + ".pkl")
+    file_prefix = "classification-" + args.model_arch
+    # file_prefix += "-rgb" if rgb_instead_of_gray else "-gray"
+    file_prefix += "-pretrained" if args.pretrained else "-notpretrained"
+    fig_filename_prefix = data_dir / file_prefix
+
+    dls = prepare_dataloaders(args.dataset_name, fig_filename_prefix)
+
+    # Train NUM_REPLICATES separate instances of this model and dataset
+    for rep in range(NUM_REPLICATES):
+        model_filename = (
+            DATASET_DIR
+            / args.dataset_name
+            / MODEL_PATH_REL_TO_DATASET
+            / f"{file_prefix}-{rep}.pth"
+        )
+        print("Model relative filename :", model_filename)
+
+        # Checks if model exists and skip if it does (helps if this crashes)
+        if path.exists(model_filename):
+            continue
+
+        log_filename = (
+            DATASET_DIR
+            / args.dataset_name
+            / DATA_PATH_REL_TO_DATASET
+            / f"{file_prefix}-trainlog-{rep}.csv"
+        )
+        print("Log relative filename   :", log_filename)
+
+        train_model(
+            dls,
+            args.model_arch,
+            args.pretrained,
+            log_filename,
+            model_filename,
+            fig_filename_prefix,
+            rep,
+        )
+
+        # Create the artifact to save the models
+        artifact = wandb.Artifact(name="07-26-img-cmd-1k+", type="model")
+
+    # Log the artifact to wandb
+    artifact.add_dir(f"{model_dir}", name="data")
+    run.log_artifact(artifact)
 
 
 if __name__ == "__main__":
