@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
-import os.path
+import pathlib
 from os import path
 
 from fastai.vision.all import *
@@ -16,10 +16,10 @@ run = wandb.init(
     notes="A set of small/useless datasets for testing.",
     job_type="dataset-upload"
 )
+
 # Load the dataset artifact
 artifact = run.use_artifact("arcslaboratory/Multirun-testing-1K+/larger-perfect-dataset:v0")
 artifact_dir = artifact.download()
-
 
 dataset_path = artifact_dir + '/'   # Path to the extracted images from the artifact
 
@@ -28,7 +28,6 @@ from torch.utils.data import Dataset
 # Constants 
 # Load the dataset artifact
 
-VALID_PCT = 0.05
 NUM_REPLICATES = 2
 NUM_EPOCHS = 1
 # DATASET_DIR = Path("/data/clark/summer2021/datasets")
@@ -42,8 +41,6 @@ compared_models = {
     "resnet34": resnet34
 }
 
-DATASET_DIR.ls()
-
 def filename_to_class(filename: str) -> str:
     angle = float(filename.split("_")[1].split(".")[0].replace("p", "."))
     if angle > 0:
@@ -54,15 +51,15 @@ def filename_to_class(filename: str) -> str:
         return "forward"
 
 class ImageWithCmdDataset(Dataset):
-    def __init__(self, filenames):
+    def __init__(self, filenames, img_size):
         """
         Creates objects for class labels, class indices, and filenames.
-        
         :param filenames: (list) a list of filenames that make up the dataset
         """
         self.class_labels = ['left', 'forward', 'right']
-        self.class_indices = {lbl:i for i, lbl in enumerate(self.class_labels)} # {'left': 0, 'forward': 1, 'right': 2}        
+        self.class_indices = {lbl:i for i, lbl in enumerate(self.class_labels)} # {'left': 0, 'forward': 1, 'right': 2}
         self.all_filenames = filenames
+        self.img_size = img_size
         
     def __len__(self):
         """
@@ -87,7 +84,7 @@ class ImageWithCmdDataset(Dataset):
         # Opens image file and ensures dimension of channels included
         img = Image.open(img_filename).convert('RGB')
         # Resizes the image
-        img = img.resize((224, 224))
+        img = img.resize((self.img_size, self.img_size))
         # Converts the image to tensor and 
         img = torch.Tensor(np.array(img)/255)
         # changes the order of the dimensions
@@ -120,13 +117,17 @@ class CommandModel(nn.Module):
         self.fc2 = nn.Linear(512, 3)
         
     def forward(self, data):
-#         print(data)
+        # Unpack the data as image and command
         img, cmd = data
+        # Pass the image data to the cnn
         x1 = self.cnn(img)
+        # Returns a new tensor from the cmd data
         x2 = cmd.unsqueeze(1)
-        
+        # Concatenate cmd and image in the 1st dimension 
         x = torch.cat((x1, x2), dim=1)
+        # Apply the ReLU function element-wise to the linearly transformed img+cmd data
         x = self.r1(self.fc1(x))
+        # Apply the linear transformation to the data 
         x = self.fc2(x)
         return x
 
@@ -135,11 +136,9 @@ def get_fig_filename(prefix: str, label: str, ext: str, rep: int) -> str:
     print(label, "filename :", fig_filename)
     return fig_filename
 
-def prepare_dataloaders(dataset_name: str, prefix: str) -> DataLoaders:
-
+def prepare_dataloaders(dataset_name: str, prefix: str, valid_pct: int, img_size: int) -> DataLoaders:
     path = DATASET_DIR / dataset_name
     files = get_image_files(path)
-#     print(files)
     
     # Get size of dataset and corresponding list of indices
     dataset_size = len(files)
@@ -147,9 +146,9 @@ def prepare_dataloaders(dataset_name: str, prefix: str) -> DataLoaders:
     
     # Shuffle the indices
     np.random.shuffle(dataset_indices)
-
+    
     # Get the index for where we want to split the data
-    val_split_index = int(np.floor(VALID_PCT * dataset_size))
+    val_split_index = int(np.floor(valid_pct * dataset_size))
     
     # Split the list of indices into training and validation indices
     train_idx, val_idx = dataset_indices[val_split_index:], dataset_indices[:val_split_index]
@@ -159,17 +158,16 @@ def prepare_dataloaders(dataset_name: str, prefix: str) -> DataLoaders:
     val_filenames = [files[i] for i in val_idx]
     
     # Create training and validation datasets
-    train_data = ImageWithCmdDataset(train_filenames)
+    train_data = ImageWithCmdDataset(train_filenames, img_size)
 #     train_data.__get_item__(10)
-    val_data = ImageWithCmdDataset(val_filenames)
+    val_data = ImageWithCmdDataset(val_filenames, img_size)
     
     # Get DataLoader
     dls = DataLoaders.from_dsets(train_data, val_data)
     dls = dls.cuda()
-
+    
     #dls.show_batch()  # type: ignore
     plt.savefig(get_fig_filename(prefix, "batch", "pdf", 0))
-
     return dls  # type: ignore
 
 def train_model(
@@ -215,6 +213,12 @@ def main():
     arg_parser.add_argument(
         "gpu", help="Assign GPU"
     )
+    arg_parser.add_argument(
+        "valid_pct", help="Validation percentage"
+    )
+    arg_parser.add_argument(
+        "img_size", help="The size of image training data"
+    )
 
     args = arg_parser.parse_args()
 
@@ -239,21 +243,19 @@ def main():
     file_prefix += "-pretrained" if args.pretrained else "-notpretrained"
     fig_filename_prefix = data_dir / file_prefix
 
-    dls = prepare_dataloaders(args.dataset_name, fig_filename_prefix)
-
+    dls = prepare_dataloaders(args.dataset_name, fig_filename_prefix, args.valid_pct, args.img_size)
+    
     # Train NUM_REPLICATES separate instances of this model and dataset
     for rep in range(NUM_REPLICATES):
-        
         model_filename = DATASET_DIR / args.dataset_name / MODEL_PATH_REL_TO_DATASET / f"{file_prefix}-{rep}.pth"
         print("Model relative filename :", model_filename)
-
+        
         # Checks if model exists and skip if it does (helps if this crashes)
         if path.exists(model_filename):
             continue
-
         log_filename = DATASET_DIR / args.dataset_name / DATA_PATH_REL_TO_DATASET / f"{file_prefix}-trainlog-{rep}.csv"
         print("Log relative filename   :", log_filename)
-
+        
         train_model(
             dls,
             args.model_arch,
@@ -270,11 +272,9 @@ def main():
         type="model"
         )
 
-    # Log the artifact to wandb
-       artifact.add_dir(f"{model_dir}", name="data")
-        run.log_artifact(artifact)
-
-
+        # Log the artifact to wandb
+           artifact.add_dir(f"{model_dir}", name="data")
+            run.log_artifact(artifact)
 
 if __name__ == "__main__":
     main()
