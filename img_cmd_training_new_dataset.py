@@ -148,7 +148,7 @@ def prepare_dataloaders(dataset_name: str, prefix: str, valid_pct: int, img_size
     np.random.shuffle(dataset_indices)
     
     # Get the index for where we want to split the data
-    val_split_index = int(np.floor(valid_pct * dataset_size))
+    val_split_index = int(np.floor(float(valid_pct) * dataset_size))
     
     # Split the list of indices into training and validation indices
     train_idx, val_idx = dataset_indices[val_split_index:], dataset_indices[:val_split_index]
