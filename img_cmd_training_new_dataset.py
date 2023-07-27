@@ -59,7 +59,7 @@ class ImageWithCmdDataset(Dataset):
         self.class_labels = ['left', 'forward', 'right']
         self.class_indices = {lbl:i for i, lbl in enumerate(self.class_labels)} # {'left': 0, 'forward': 1, 'right': 2}
         self.all_filenames = filenames
-        self.img_size = img_size
+        self.img_size = int(img_size)
         
     def __len__(self):
         """
