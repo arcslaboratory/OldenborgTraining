@@ -110,7 +110,7 @@ class ImageWithCmdDataset(Dataset):
         # Data and the label associated with that data
         return (img, cmd), label
 
-class cmd_model(nn.Module):
+class CommandModel(nn.Module):
     def __init__(self, arch: str, pretrained: bool):
         super(cmd_model, self).__init__()
         self.cnn = arch(pretrained=pretrained)
