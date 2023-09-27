@@ -2,6 +2,9 @@
 Use batch_tfms=aug_transforms() to apply data augmentation
 Better for sim2real?
 """
+"""
+Trains and exports a model to WandB based on user provided specifications.
+"""
 from argparse import ArgumentParser, Namespace
 from functools import partial
 from math import radians
@@ -25,10 +28,10 @@ from fastai.vision.models import resnet18, resnet34
 from fastai.vision.utils import get_image_files
 from torch import nn
 
-# NOTE: we can change/add to this list
+# NOTE: we can change/add to this list. Dictionary of compared models
 compared_models = {"resnet18": resnet18, "resnet34": resnet34}
 
-
+# function to parse command line args
 def parse_args() -> Namespace:
     arg_parser = ArgumentParser("Train cmd classification networks.")
     arg_parser.add_argument("name", type=str, help="Short name for the run")
@@ -73,13 +76,13 @@ def parse_args() -> Namespace:
 
     return arg_parser.parse_args()
 
-
+# initialize WandB for experiment tracking
 def setup_wandb(args: Namespace):
     run = wandb.init(
         name=args.name,
-        project="scr2023-training",
-        entity="arcslaboratory",
-        notes="Training models for SCR2023 abstract",
+        project="scr2023-training", # Name of current project
+        entity="arcslaboratory", # destination (can also switch to personal account)
+        notes="Training models for SCR2023 abstract", # specific notes abt project
         job_type="train",
     )
 
@@ -87,7 +90,6 @@ def setup_wandb(args: Namespace):
         raise Exception("wandb.init() failed")
 
     # Load the dataset artifact
-
     if args.local_data:
         data_dir = args.local_data
     else:
@@ -99,7 +101,7 @@ def setup_wandb(args: Namespace):
 
     return run, data_dir
 
-
+# grab rotation angle from the image filename
 def get_angle_from_filename(filename: str) -> float:
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
@@ -114,14 +116,14 @@ def y_from_filename(rotation_threshold, filename) -> str:
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
 
-    if angle > rotation_threshold:
+    if angle > rotation_threshold: # threshold augments cutoff to mitigate sharp switches in direction
         return "left"
     elif angle < -rotation_threshold:
         return "right"
     else:
         return "forward"
 
-
+# create data loaders
 def get_dls(args: Namespace, data_path: str):
     # NOTE: not allowed to add a type annotation to the input
 
@@ -145,21 +147,23 @@ def get_dls(args: Namespace, data_path: str):
             # item_tfms=Resize(224)
         )
 
-
+# create data loaders for image + command input
 def get_image_command_category_dataloaders(
     args: Namespace, data_path: str, image_filenames, y_from_filename
 ):
+  
     def x1_from_filename(filename: str) -> str:
         return filename
 
     # NOTE: not allowed to add a type annotation to the input
     def x2_from_filename(filename) -> float:
+        """Extracts the angle information from filename. """
         filename_index = image_filenames.index(Path(filename))
 
-        if filename_index == 0:
+        if filename_index == 0: # if it's the first image, returns 0.0
             return 0.0
-
-        previous_filename = image_filenames[filename_index - 1]
+        # else, extracts previous image comand
+        previous_filename = image_filenames[filename_index - 1] 
         previous_angle = get_angle_from_filename(previous_filename)
 
         if previous_angle > args.rotation_threshold:
@@ -185,7 +189,7 @@ def get_image_command_category_dataloaders(
 
 
 def run_experiment(args: Namespace, run, dls):
-    torch.cuda.set_device(int(args.gpu))
+    torch.cuda.set_device(int(args.gpu)) # sets GPU through command line arg
     dls.to(torch.cuda.current_device())
     print("Running on GPU: " + str(torch.cuda.current_device()))
 
@@ -198,7 +202,7 @@ def run_experiment(args: Namespace, run, dls):
 
 def train_model(dls: DataLoaders, args: Namespace, rep: int):
     """Train the cmd_model using the provided data and hyperparameters."""
-
+    # using image + command
     if args.use_command_image:
         net = ImageCommandModel(args.model_arch, pretrained=args.pretrained)
         learn = Learner(
@@ -206,7 +210,7 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
             net,
             loss_func=CrossEntropyLossFlat(),
             metrics=accuracy,
-            cbs=WandbCallback(log_model=True),
+            cbs=WandbCallback(log_model=True), # use the WandB callback function to log model
         )
     else:
         learn = vision_learner(
@@ -223,7 +227,7 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
         learn.fit_one_cycle(args.num_epochs)
 
     # TODO: remove the callbacks before exporting so they are not require on loading?
-    learn.export(f"models/{args.name}_rep{rep:02}.pkl")
+    learn.export(f"models/{args.name}_rep{rep:02}.pkl") 
 
 
 class ImageCommandModel(nn.Module):
