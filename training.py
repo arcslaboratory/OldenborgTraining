@@ -28,10 +28,9 @@ from fastai.vision.models import resnet18, resnet34
 from fastai.vision.utils import get_image_files
 from torch import nn
 
-# NOTE: we can change/add to this list. Dictionary of compared models
+# NOTE: we can change/add to this list. 
 compared_models = {"resnet18": resnet18, "resnet34": resnet34}
 
-# function to parse command line args
 def parse_args() -> Namespace:
     arg_parser = ArgumentParser("Train cmd classification networks.")
     arg_parser.add_argument("name", type=str, help="Short name for the run")
@@ -78,11 +77,14 @@ def parse_args() -> Namespace:
 
 # initialize WandB for experiment tracking
 def setup_wandb(args: Namespace):
+    """ 
+    Initializes WandB for experiment tracking by specifing name of project, destination, and details. 
+    """
     run = wandb.init(
         name=args.name,
-        project="scr2023-training", # Name of current project
-        entity="arcslaboratory", # destination (can also switch to personal account)
-        notes="Training models for SCR2023 abstract", # specific notes abt project
+        project="scr2023-training",
+        entity="arcslaboratory", 
+        notes="Training models for SCR2023 abstract", 
         job_type="train",
     )
 
@@ -101,7 +103,6 @@ def setup_wandb(args: Namespace):
 
     return run, data_dir
 
-# grab rotation angle from the image filename
 def get_angle_from_filename(filename: str) -> float:
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
@@ -115,8 +116,9 @@ def y_from_filename(rotation_threshold, filename) -> str:
     """
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
-
-    if angle > rotation_threshold: # threshold augments cutoff to mitigate sharp switches in direction
+    
+    # threshold augments cutoff to mitigate sharp switches in direction
+    if angle > rotation_threshold: 
         return "left"
     elif angle < -rotation_threshold:
         return "right"
@@ -159,8 +161,8 @@ def get_image_command_category_dataloaders(
     def x2_from_filename(filename) -> float:
         """Extracts the angle information from filename. """
         filename_index = image_filenames.index(Path(filename))
-
-        if filename_index == 0: # if it's the first image, returns 0.0
+        # if it's the first image, returns 0.0
+        if filename_index == 0: 
             return 0.0
         # else, extracts previous image comand
         previous_filename = image_filenames[filename_index - 1] 
@@ -189,7 +191,7 @@ def get_image_command_category_dataloaders(
 
 
 def run_experiment(args: Namespace, run, dls):
-    torch.cuda.set_device(int(args.gpu)) # sets GPU through command line arg
+    torch.cuda.set_device(int(args.gpu)) 
     dls.to(torch.cuda.current_device())
     print("Running on GPU: " + str(torch.cuda.current_device()))
 
@@ -210,7 +212,7 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
             net,
             loss_func=CrossEntropyLossFlat(),
             metrics=accuracy,
-            cbs=WandbCallback(log_model=True), # use the WandB callback function to log model
+            cbs=WandbCallback(log_model=True), 
         )
     else:
         learn = vision_learner(
