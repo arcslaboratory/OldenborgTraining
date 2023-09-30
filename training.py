@@ -116,7 +116,8 @@ def y_from_filename(rotation_threshold, filename) -> str:
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
 
-    if angle > rotation_threshold: # threshold augments cutoff to mitigate sharp switches in direction
+    # Threshold augments cutoff to mitigate sharp switches in direction
+    if angle > rotation_threshold:
         return "left"
     elif angle < -rotation_threshold:
         return "right"
