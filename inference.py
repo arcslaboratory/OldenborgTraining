@@ -12,6 +12,8 @@ from ue5osc import Communicator
 
 from utils import y_from_filename  # noqa: F401 (needed for fastai load_learner)
 
+## artifact = run.use_artifact(f"{wandb_name}:latest")
+# data_dir = artifact.download()
 
 # @contextmanager
 # def set_posix_windows():

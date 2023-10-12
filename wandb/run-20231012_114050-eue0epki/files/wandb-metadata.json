@@ -1,0 +1,51 @@
+{
+    "os": "macOS-10.16-x86_64-i386-64bit",
+    "python": "3.11.5",
+    "heartbeatAt": "2023-10-12T18:40:50.833205",
+    "startedAt": "2023-10-12T18:40:50.278204",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "perfect-random-model",
+        "pkl-test",
+        "testing training pkl upload",
+        "resnet18",
+        "arcslaboratory/DoWellDatasets/Perfect-Random-Textures:v0"
+    ],
+    "state": "running",
+    "program": "/Users/daisyabbott/Desktop/ForkedOldyTraining/training.py",
+    "codePathLocal": "training.py",
+    "codePath": "training.py",
+    "git": {
+        "remote": "https://github.com/daisy-abbott/OldenborgTraining.git",
+        "commit": "45fcb85c7c3aa439323eee06e4b8b6621cbbe248"
+    },
+    "email": "dabbott2117@gmail.com",
+    "root": "/Users/daisyabbott/Desktop/ForkedOldyTraining",
+    "host": "MacBook-Pro-593.local",
+    "username": "daisyabbott",
+    "executable": "/Users/daisyabbott/opt/anaconda3/envs/oldenborg/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2400,
+        "min": 2400,
+        "max": 2400
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2400,
+            "min": 2400,
+            "max": 2400
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 460.4317207336426,
+            "used": 329.62147521972656
+        }
+    },
+    "memory": {
+        "total": 8.0
+    }
+}

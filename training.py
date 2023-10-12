@@ -2,9 +2,6 @@
 Use batch_tfms=aug_transforms() to apply data augmentation
 Better for sim2real?
 """
-"""
-Trains and exports a model to WandB based on user provided specifications.
-"""
 from argparse import ArgumentParser, Namespace
 from functools import partial
 from math import radians
@@ -12,7 +9,6 @@ from pathlib import Path
 
 # import matplotlib.pyplot as plt
 import torch
-import wandb
 from fastai.callback.wandb import WandbCallback
 from fastai.data.all import (
     CategoryBlock,
@@ -27,43 +23,37 @@ from fastai.vision.learner import Learner, accuracy, vision_learner
 from fastai.vision.models import resnet18, resnet34
 from fastai.vision.utils import get_image_files
 from torch import nn
-from utils import get_dls, y_from_filename
 
-# NOTE: we can change/add to this list.
+import wandb
+
+# NOTE: we can change/add to this list
 compared_models = {"resnet18": resnet18, "resnet34": resnet34}
 
 
 def parse_args() -> Namespace:
-    arg_parser = ArgumentParser("Train cmd classification networks.")
-    arg_parser.add_argument("name", type=str, help="Short name for the run")
-    arg_parser.add_argument(
-        "model_arch", type=str, help="Model architecture (see code for options)"
-    )
+    arg_parser = ArgumentParser("Train command classification networks.")
+
+    # Wandb configuration
+    arg_parser.add_argument("wandb_name", help="Name of run and artifact.")
+    arg_parser.add_argument("wandb_project", help="Wandb project name.")
+    arg_parser.add_argument("wandb_notes", help="Wandb run description.")
+
+    # Model configuration
+    arg_parser.add_argument("model_arch", help="Model architecture (see code).")
     arg_parser.add_argument(
         "--use_command_image",
         action="store_true",
-        help="Use the command+image input model",
+        help="Use the command+image input model.",
     )
-    # TODO: accept dataset name as argument
-    # arg_parser.add_argument("dataset_name", help="Name of dataset to use")
+
+    # Dataset configuration
+    arg_parser.add_argument("dataset_name", help="Name of dataset to use.")
     arg_parser.add_argument(
-        "--pretrained", action="store_true", help="Use pretrained model"
+        "--pretrained", action="store_true", help="Use pretrained model."
     )
-    arg_parser.add_argument("--gpu", type=int, default=0, help="GPU to use")
+    arg_parser.add_argument("--gpu", type=int, default=0, help="GPU to use.")
     arg_parser.add_argument(
-        "--valid_pct", type=float, default=0.2, help="Validation percentage"
-    )
-    arg_parser.add_argument(
-        "--num_epochs", type=int, default=10, help="Number of training epochs"
-    )
-    arg_parser.add_argument(
-        "--num_replicates", type=int, default=1, help="Number of replicates to run"
-    )
-    arg_parser.add_argument(
-        "--image_resize", type=int, default=None, help="The size of image training data"
-    )
-    arg_parser.add_argument(
-        "--batch_size", type=int, default=64, help="Training batch size"
+        "--valid_pct", type=float, default=0.2, help="Validation percentage."
     )
     arg_parser.add_argument(
         "--rotation_threshold",
@@ -72,36 +62,50 @@ def parse_args() -> Namespace:
         help="Threshold in radians for classifying rotation as left/right or forward.",
     )
     arg_parser.add_argument(
-        "--local_data", type=str, help="Path to local data directory"
+        "--local_data", action="store_true", help="Data is stored locally."
+    )
+
+    # Training configuration
+    arg_parser.add_argument(
+        "--num_epochs", type=int, default=10, help="Number of training epochs."
+    )
+    arg_parser.add_argument(
+        "--num_replicates", type=int, default=1, help="Number of replicates to run."
+    )
+    arg_parser.add_argument(
+        "--image_resize",
+        type=int,
+        default=None,
+        help="The size of image training data.",
+    )
+    arg_parser.add_argument(
+        "--batch_size", type=int, default=64, help="Training batch size."
     )
 
     return arg_parser.parse_args()
 
 
-# initialize WandB for experiment tracking
 def setup_wandb(args: Namespace):
-    """
-    Initializes WandB for experiment tracking by specifing name of project, destination, and details.
-    """
+    wandb_entity = "arcslaboratory"
+    wandb_project = args.wandb_project
+    wandb_name = args.wandb_name
+    wandb_notes = args.wandb_notes
+
     run = wandb.init(
-        name=args.name,
-        project="scr2023-training",
-        entity="arcslaboratory",
-        notes="Training models for SCR2023 abstract",
         job_type="train",
+        entity=wandb_entity,
+        name=wandb_name,
+        project=wandb_project,
+        notes=wandb_notes,
     )
 
     if run is None:
         raise Exception("wandb.init() failed")
 
-    # Load the dataset artifact
     if args.local_data:
         data_dir = args.local_data
     else:
-        # TODO: use args to get dataset artifact name
-        artifact = run.use_artifact(
-            "arcslaboratory/wandering-random-2K+/07-26_wandering_10Trials_randomized:latest"
-        )
+        artifact = run.use_artifact(f"{wandb_name}: latest")
         data_dir = artifact.download()
 
     return run, data_dir
@@ -113,24 +117,46 @@ def get_angle_from_filename(filename: str) -> float:
     return angle
 
 
-# def y_from_filename(rotation_threshold, filename) -> str:
-#     """Extracts the direction label from the filename of an image.
+def y_from_filename(rotation_threshold, filename) -> str:
+    """Extracts the direction label from the filename of an image.
 
-#     Example: "path/to/file/001_000011_-1p50.png" --> "right"
-#     """
-#     filename_stem = Path(filename).stem
-#     angle = float(filename_stem.split("_")[2].replace("p", "."))
+    Example: "path/to/file/001_000011_-1p50.png" --> "right"
+    """
+    filename_stem = Path(filename).stem
+    angle = float(filename_stem.split("_")[2].replace("p", "."))
 
-#     # threshold augments cutoff to mitigate sharp switches in direction
-#     if angle > rotation_threshold:
-#         return "left"
-#     elif angle < -rotation_threshold:
-#         return "right"
-#     else:
-#         return "forward"
+    if angle > rotation_threshold:
+        return "left"
+    elif angle < -rotation_threshold:
+        return "right"
+    else:
+        return "forward"
 
 
-# create data loaders for image + command input
+def get_dls(args: Namespace, data_path: str):
+    # NOTE: not allowed to add a type annotation to the input
+
+    image_filenames: list = get_image_files(data_path)  # type:ignore
+
+    # Using a partial function to set the rotation_threshold from args
+    label_func = partial(y_from_filename, args.rotation_threshold)
+
+    if args.use_command_image:
+        return get_image_command_category_dataloaders(
+            args, data_path, image_filenames, label_func
+        )
+    else:
+        return ImageDataLoaders.from_name_func(
+            data_path,
+            image_filenames,
+            label_func,
+            valid_pct=args.valid_pct,
+            shuffle=True,
+            bs=args.batch_size,
+            # item_tfms=Resize(224)
+        )
+
+
 def get_image_command_category_dataloaders(
     args: Namespace, data_path: str, image_filenames, y_from_filename
 ):
@@ -139,12 +165,11 @@ def get_image_command_category_dataloaders(
 
     # NOTE: not allowed to add a type annotation to the input
     def x2_from_filename(filename) -> float:
-        """Extracts the angle information from filename."""
         filename_index = image_filenames.index(Path(filename))
-        # if it's the first image, returns 0.0
+
         if filename_index == 0:
             return 0.0
-        # else, extracts previous image comand
+
         previous_filename = image_filenames[filename_index - 1]
         previous_angle = get_angle_from_filename(previous_filename)
 
@@ -177,14 +202,15 @@ def run_experiment(args: Namespace, run, dls):
 
     learn = None
     for rep in range(args.num_replicates):
-        learn = train_model(dls, args, rep)
+        learn = train_model(dls, args, rep, run)
 
     return learn
 
 
-def train_model(dls: DataLoaders, args: Namespace, rep: int):
+# TODO:
+def train_model(dls: DataLoaders, args: Namespace, rep: int, run):
     """Train the cmd_model using the provided data and hyperparameters."""
-    # using image + command
+
     if args.use_command_image:
         net = ImageCommandModel(args.model_arch, pretrained=args.pretrained)
         learn = Learner(
@@ -209,7 +235,11 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
         learn.fit_one_cycle(args.num_epochs)
 
     # TODO: remove the callbacks before exporting so they are not require on loading?
-    learn.export(f"models/{args.name}_rep{rep:02}.pkl")
+    learner_filename = f"models/{args.wandb_name}_rep{rep:02}.pkl"
+    learn.export(learner_filename)
+    artifact = wandb.Artifact(name=args.wandb_name, type="fastai_learner")
+    artifact.add_file(learner_filename, "modelTest")
+    run.log(artifact)
 
 
 class ImageCommandModel(nn.Module):
