@@ -70,17 +70,18 @@ def main():
     )
     # TODO: Do we always want to use latest?
     artifact = run.use_artifact(f"{args.wandb_model}:latest")
+
     model_dir = artifact.download()
     # model = load_learner(model_dir)
     # TODO: Fix this so that it works
     # model = vision_learner(dls, resnet18, metrics=accuracy)
-    model = load_learner(dls, resnet18, metrics=accuracy)
-    model.load(Path(model_dir) / args.model_name)
+    model = load_learner(model_dir)
+    # model.load(Path(model_dir) / args.model_name)
 
     # raise SystemExit
 
     # TODO: temporary fix? (we might remove callback on training side)
-    model.remove_cb(WandbCallback)
+    # model.remove_cb(WandbCallback)
 
     output_dir = Path(args.output_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)

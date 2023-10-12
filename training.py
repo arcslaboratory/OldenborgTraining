@@ -105,7 +105,8 @@ def setup_wandb(args: Namespace):
     if args.local_data:
         data_dir = args.local_data
     else:
-        artifact = run.use_artifact(f"{wandb_name}: latest")
+        # Changed from wand_name to dataset_name
+        artifact = run.use_artifact(f"{args.dataset_name}:latest")
         data_dir = artifact.download()
 
     return run, data_dir
