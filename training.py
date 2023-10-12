@@ -27,9 +27,11 @@ from fastai.vision.learner import Learner, accuracy, vision_learner
 from fastai.vision.models import resnet18, resnet34
 from fastai.vision.utils import get_image_files
 from torch import nn
+from utils import get_dls, y_from_filename
 
-# NOTE: we can change/add to this list. 
+# NOTE: we can change/add to this list.
 compared_models = {"resnet18": resnet18, "resnet34": resnet34}
+
 
 def parse_args() -> Namespace:
     arg_parser = ArgumentParser("Train cmd classification networks.")
@@ -75,16 +77,17 @@ def parse_args() -> Namespace:
 
     return arg_parser.parse_args()
 
+
 # initialize WandB for experiment tracking
 def setup_wandb(args: Namespace):
-    """ 
-    Initializes WandB for experiment tracking by specifing name of project, destination, and details. 
+    """
+    Initializes WandB for experiment tracking by specifing name of project, destination, and details.
     """
     run = wandb.init(
         name=args.name,
         project="scr2023-training",
-        entity="arcslaboratory", 
-        notes="Training models for SCR2023 abstract", 
+        entity="arcslaboratory",
+        notes="Training models for SCR2023 abstract",
         job_type="train",
     )
 
@@ -103,69 +106,46 @@ def setup_wandb(args: Namespace):
 
     return run, data_dir
 
+
 def get_angle_from_filename(filename: str) -> float:
     filename_stem = Path(filename).stem
     angle = float(filename_stem.split("_")[2].replace("p", "."))
     return angle
 
 
-def y_from_filename(rotation_threshold, filename) -> str:
-    """Extracts the direction label from the filename of an image.
+# def y_from_filename(rotation_threshold, filename) -> str:
+#     """Extracts the direction label from the filename of an image.
 
-    Example: "path/to/file/001_000011_-1p50.png" --> "right"
-    """
-    filename_stem = Path(filename).stem
-    angle = float(filename_stem.split("_")[2].replace("p", "."))
-    
-    # threshold augments cutoff to mitigate sharp switches in direction
-    if angle > rotation_threshold: 
-        return "left"
-    elif angle < -rotation_threshold:
-        return "right"
-    else:
-        return "forward"
+#     Example: "path/to/file/001_000011_-1p50.png" --> "right"
+#     """
+#     filename_stem = Path(filename).stem
+#     angle = float(filename_stem.split("_")[2].replace("p", "."))
 
-# create data loaders
-def get_dls(args: Namespace, data_path: str):
-    # NOTE: not allowed to add a type annotation to the input
+#     # threshold augments cutoff to mitigate sharp switches in direction
+#     if angle > rotation_threshold:
+#         return "left"
+#     elif angle < -rotation_threshold:
+#         return "right"
+#     else:
+#         return "forward"
 
-    image_filenames: list = get_image_files(data_path)  # type:ignore
-
-    # Using a partial function to set the rotation_threshold from args
-    label_func = partial(y_from_filename, args.rotation_threshold)
-
-    if args.use_command_image:
-        return get_image_command_category_dataloaders(
-            args, data_path, image_filenames, label_func
-        )
-    else:
-        return ImageDataLoaders.from_name_func(
-            data_path,
-            image_filenames,
-            label_func,
-            valid_pct=args.valid_pct,
-            shuffle=True,
-            bs=args.batch_size,
-            # item_tfms=Resize(224)
-        )
 
 # create data loaders for image + command input
 def get_image_command_category_dataloaders(
     args: Namespace, data_path: str, image_filenames, y_from_filename
 ):
-  
     def x1_from_filename(filename: str) -> str:
         return filename
 
     # NOTE: not allowed to add a type annotation to the input
     def x2_from_filename(filename) -> float:
-        """Extracts the angle information from filename. """
+        """Extracts the angle information from filename."""
         filename_index = image_filenames.index(Path(filename))
         # if it's the first image, returns 0.0
-        if filename_index == 0: 
+        if filename_index == 0:
             return 0.0
         # else, extracts previous image comand
-        previous_filename = image_filenames[filename_index - 1] 
+        previous_filename = image_filenames[filename_index - 1]
         previous_angle = get_angle_from_filename(previous_filename)
 
         if previous_angle > args.rotation_threshold:
@@ -191,7 +171,7 @@ def get_image_command_category_dataloaders(
 
 
 def run_experiment(args: Namespace, run, dls):
-    torch.cuda.set_device(int(args.gpu)) 
+    torch.cuda.set_device(int(args.gpu))
     dls.to(torch.cuda.current_device())
     print("Running on GPU: " + str(torch.cuda.current_device()))
 
@@ -212,7 +192,7 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
             net,
             loss_func=CrossEntropyLossFlat(),
             metrics=accuracy,
-            cbs=WandbCallback(log_model=True), 
+            cbs=WandbCallback(log_model=True),
         )
     else:
         learn = vision_learner(
@@ -229,7 +209,7 @@ def train_model(dls: DataLoaders, args: Namespace, rep: int):
         learn.fit_one_cycle(args.num_epochs)
 
     # TODO: remove the callbacks before exporting so they are not require on loading?
-    learn.export(f"models/{args.name}_rep{rep:02}.pkl") 
+    learn.export(f"models/{args.name}_rep{rep:02}.pkl")
 
 
 class ImageCommandModel(nn.Module):

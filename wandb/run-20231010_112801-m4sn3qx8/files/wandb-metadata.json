@@ -1,0 +1,51 @@
+{
+    "os": "macOS-10.16-x86_64-i386-64bit",
+    "python": "3.11.5",
+    "heartbeatAt": "2023-10-10T18:28:01.827828",
+    "startedAt": "2023-10-10T18:28:01.159033",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "arcslaboratory/Do-Well-Model/model",
+        "Do-Well-Inference-Temp",
+        "inferencePerfectStatic",
+        "testing inference with do well dataset perfect static",
+        "data"
+    ],
+    "state": "running",
+    "program": "/Users/daisyabbott/Desktop/ForkedOldyTraining/inference.py",
+    "codePathLocal": "inference.py",
+    "codePath": "inference.py",
+    "git": {
+        "remote": "https://github.com/daisy-abbott/OldenborgTraining.git",
+        "commit": "cca4f74dd589e9a92784b1b9b7e17d5424367c56"
+    },
+    "email": "dabbott2117@gmail.com",
+    "root": "/Users/daisyabbott/Desktop/ForkedOldyTraining",
+    "host": "MacBook-Pro-593.local",
+    "username": "daisyabbott",
+    "executable": "/Users/daisyabbott/opt/anaconda3/envs/oldenborg/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2400,
+        "min": 2400,
+        "max": 2400
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2400,
+            "min": 2400,
+            "max": 2400
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 460.4317207336426,
+            "used": 331.38861083984375
+        }
+    },
+    "memory": {
+        "total": 8.0
+    }
+}

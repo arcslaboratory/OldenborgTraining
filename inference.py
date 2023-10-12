@@ -1,10 +1,11 @@
 import pathlib
+import wandb
 from argparse import ArgumentParser
 from contextlib import contextmanager
-from math import radians
 from pathlib import Path
 from time import sleep
-
+from fastai.vision.all import *
+from fastai.callback.wandb import *
 from fastai.callback.wandb import WandbCallback
 from fastai.vision.learner import load_learner
 from ue5osc import Communicator
@@ -12,19 +13,22 @@ from ue5osc import Communicator
 from utils import y_from_filename  # noqa: F401 (needed for fastai load_learner)
 
 
-@contextmanager
-def set_posix_windows():
-    posix_backup = pathlib.PosixPath
-    try:
-        pathlib.PosixPath = pathlib.WindowsPath
-        yield
-    finally:
-        pathlib.PosixPath = posix_backup
+# @contextmanager
+# def set_posix_windows():
+#     posix_backup = pathlib.PosixPath
+#     try:
+#         pathlib.PosixPath = pathlib.WindowsPath
+#         yield
+#     finally:
+#         pathlib.PosixPath = posix_backup
 
 
 def parse_args():
     arg_parser = ArgumentParser("Track performance of trained networks.")
-    arg_parser.add_argument("model", help="Path to the model to evaluate.")
+    arg_parser.add_argument("wandb_model", help="Path to the WandB model to evaluate.")
+    arg_parser.add_argument("wandb_project", help="Wandb project name.")
+    arg_parser.add_argument("wandb_name", help="Wandb run name.")
+    arg_parser.add_argument("wandb_notes", help="Wandb run description.")
     arg_parser.add_argument("output_dir", help="Directory to store saved images.")
     arg_parser.add_argument(
         "--movement_amount",
@@ -35,6 +39,7 @@ def parse_args():
     arg_parser.add_argument(
         "--rotation_amount",
         type=float,
+        # TODO: Figure out radians vs. degrees
         # default=radians(10),
         default=10.0,
         help="Rotation per action.",
@@ -52,8 +57,25 @@ def main():
     args = parse_args()
 
     # NOTE: This is a workaround for a bug in fastai/pathlib on Windows
-    with set_posix_windows():
-        model = load_learner(args.model)
+    # with set_posix_windows():
+    wandb.login()
+    run = wandb.init(
+        job_type="inference",
+        entity="arcslaboratory",
+        name=args.wandb_name,
+        project=args.wandb_project,
+        notes=args.wandb_notes,
+    )
+    # TODO: Do we always want to use latest?
+    artifact = run.use_artifact(f"{args.wandb_model}:latest")
+    model_dir = artifact.download()
+    # model = load_learner(model_dir)
+    # TODO: Fix this so that it works
+    # model = vision_learner(dls, resnet18, metrics=accuracy)
+    model = load_learner(dls, resnet18, metrics=accuracy)
+    model.load(Path(model_dir) / args.model_name)
+
+    # raise SystemExit
 
     # TODO: temporary fix? (we might remove callback on training side)
     model.remove_cb(WandbCallback)
