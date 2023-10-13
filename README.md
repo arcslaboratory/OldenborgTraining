@@ -14,13 +14,15 @@ mamba install fastai
 ~~~
 ## Mac
 On mac just using conda: 
+~~~bash
 conda create --name oldenborg
 conda activate oldenborg
 conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 -c pytorch
 conda install -c fastai fastai 
 conda install -c conda-forge wandb
-
+~~~
 In script, Must comment out: 
+~~~bash
 with set_posix_windows(): 
 def set_posix_windows():
      posix_backup = pathlib.PosixPath
@@ -30,3 +32,4 @@ def set_posix_windows():
      finally:
          pathlib.PosixPath = posix_backup
 
+~~~
