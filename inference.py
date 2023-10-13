@@ -1,19 +1,24 @@
-import pathlib
+# from utils import get_dls
+import os
 import wandb
+
+from utils import y_from_filename  # noqa: F401 (needed for fastai load_learner)
+import pathlib
 from argparse import ArgumentParser
 from contextlib import contextmanager
 from pathlib import Path
 from time import sleep
-from fastai.vision.all import *
-from fastai.callback.wandb import *
+
 from fastai.callback.wandb import WandbCallback
 from fastai.vision.learner import load_learner
 from ue5osc import Communicator
 
-from utils import y_from_filename  # noqa: F401 (needed for fastai load_learner)
+# from utils import y_from_filename  # noqa: F401 (needed for fastai load_learner)
+
 
 ## artifact = run.use_artifact(f"{wandb_name}:latest")
 # data_dir = artifact.download()
+# NOTE: Modify so this works any test dataset
 
 # @contextmanager
 # def set_posix_windows():
@@ -69,16 +74,25 @@ def main():
         notes=args.wandb_notes,
     )
     # TODO: Do we always want to use latest?
+    print("starting")
     artifact = run.use_artifact(f"{args.wandb_model}:latest")
 
     model_dir = artifact.download()
-    # model = load_learner(model_dir)
-    # TODO: Fix this so that it works
-    # model = vision_learner(dls, resnet18, metrics=accuracy)
+    print("Model directory contents:", os.listdir(model_dir))
+    # print("Model directory contents:", os.listdir(model_dir))
+
     model = load_learner(model_dir)
-    # model.load(Path(model_dir) / args.model_name)
+
+    # model_file = artifact.download(root="./artifacts")
+    # model_dir = model_file.download()
+
+    # model = load_learner(model_dir)
 
     # raise SystemExit
+
+    # downloaded_dir = artifact.download(root="./artifacts")
+    # model_file_path = downloaded_dir / args.wandb_model
+    # model = load_learner(model_file_path)
 
     # TODO: temporary fix? (we might remove callback on training side)
     # model.remove_cb(WandbCallback)
