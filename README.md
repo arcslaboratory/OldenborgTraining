@@ -3,6 +3,24 @@
 Train and perform inference on Oldenborg datasets.
 Create one Project in WandB that contains Datasets, models, and inference testing
 
+Arguments to pass in for training.py: 
+~~~bash
+wandb_name wandb_project wandb_notes model_arch dataset_name
+~~~
+Example: 
+~~~bash
+python training.py test-perfect-random pkl-test "testing pkl export" resnet18 arcslaboratory/DoWellDatasets/Perfect-Random-Textures
+~~~
+Arguments for inference.py: 
+~~~bash
+wandb_model wandb_project wandb_name wandb_notes output_dir
+~~~
+Example: 
+~~~bash
+python inference.py arcslaboratory/pkl-test/model  testInference perfect-random-Inference "testing inference on model trained using perfect random" data
+~~~
+
+
 ## Windows
 
 For inference on Windows, I had to create an environment with the following:
